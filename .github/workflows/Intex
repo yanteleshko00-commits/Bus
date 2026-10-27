@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#168653">
+<title>Грузовики — калькулятор рейса</title>
+<style>
+:root{--g:#168653;--dark:#0c633b;--bg:#f2f7f3;--text:#193126;--muted:#6b7d72;--border:#dce8df}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:var(--g);color:white;padding:24px 18px}
+.wrap{max-width:850px;margin:auto}
+header h1{margin:0 0 6px;font-size:27px}
+header p{margin:0}
+main{padding:16px}
+.card{background:white;border:1px solid var(--border);border-radius:17px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px #163d260b}
+h2{font-size:19px;margin:0 0 16px}
+.grid,.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.field{min-width:0}
+label{display:block;font-weight:600;font-size:14px;margin-bottom:7px}
+input{display:block;width:100%;min-width:0;min-height:48px;border:1px solid #cbdacf;border-radius:11px;padding:12px;background:white;color:var(--text);font:inherit;font-size:16px;pointer-events:auto;user-select:text;-webkit-user-select:text;touch-action:manipulation}
+input:focus{outline:2px solid var(--g);border-color:var(--g)}
+.hint,.note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+button{width:100%;min-height:48px;padding:13px;border:0;border-radius:11px;font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation;margin-top:12px}
+.primary{background:var(--g);color:white}
+.secondary{background:#e5f3e9;color:var(--dark)}
+.result{background:#f1f7f2;border-radius:12px;padding:13px;overflow-wrap:anywhere}
+.result span{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}
+.result strong{font-size:20px}
+.total{background:var(--g);color:white}
+.total span{color:#e0f5e8}
+.profit{background:#e0f5e7}
+.status{font-size:13px;color:var(--muted);margin-top:10px}
+footer{text-align:center;color:var(--muted);padding:10px 15px 28px;font-size:12px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.results{grid-template-columns:1fr 1fr}.result strong{font-size:17px}.card{padding:14px}}
+@media print{body{background:white}header{background:white;color:black}.no-print,footer{display:none!important}.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<h1>🚚 Грузовики</h1>
+<p>Калькулятор стоимости грузового рейса</p>
+</div>
+</header>
+
+<main class="wrap">
+<section class="card">
+<h2>1. Маршрут</h2>
+<div class="grid">
+<div class="field"><label for="from">Откуда</label><input id="from" type="text" placeholder="Например, Симферополь" autocomplete="off"></div>
+<div class="field"><label for="to">Куда</label><input id="to" type="text" placeholder="Например, Ялта" autocomplete="off"></div>
+<div class="field"><label for="km">Расстояние в одну сторону, км</label><input id="km" type="number" inputmode="decimal" min="0" step="0.1" value="80"><div class="hint">Обратный путь учитывается автоматически.</div></div>
+<div class="field"><label for="speed">Средняя скорость, км/ч</label><input id="speed" type="number" inputmode="decimal" min="1" step="1" value="65"></div>
+</div>
+<button class="secondary no-print" id="routeBtn" type="button">Рассчитать расстояние по дорогам</button>
+<div class="status" id="routeStatus" aria-live="polite"></div>
+<p class="note">Для поиска маршрута нужен интернет. Если автоматический поиск не сработает, введи расстояние вручную.</p>
+</section>
+
+<section class="card">
+<h2>2. Расходы</h2>
+<div class="grid">
+<div class="field"><label for="tollOut">Платные дороги туда, ₽</label><input id="tollOut" type="number" inputmode="decimal" min="0" step="1" value="0"></div>
+<div class="field"><label for="tollBack">Платные дороги обратно, ₽</label><input id="tollBack" type="number" inputmode="decimal" min="0" step="1" value="0"></div>
+<div class="field"><label for="wage">Оплата водителя, ₽/час</label><input id="wage" type="number" inputmode="decimal" min="0" step="10" value="1150"></div>
+<div class="field"><label for="loadingHours">Погрузка и разгрузка, часов</label><input id="loadingHours" type="number" inputmode="decimal" min="0" step="0.5" value="2"></div>
+<div class="field"><label for="consumption">Расход топлива, л/100 км</label><input id="consumption" type="number" inputmode="decimal" min="0" step="0.1" value="18"></div>
+<div class="field"><label for="fuelPrice">Цена топлива, ₽/л</label><input id="fuelPrice" type="number" inputmode="decimal" min="0" step="0.1" value="90"></div>
+<div class="field"><label for="markup">Наценка, %</label><input id="markup" type="number" inputmode="decimal" min="0" step="1" value="20"></div>
+</div>
+</section>
+
+<section class="card">
+<h2>3. Результат расчёта</h2>
+<div class="results" aria-live="polite">
+<div class="result"><span>Расстояние туда-обратно</span><strong id="roundKm">160 км</strong></div>
+<div class="result"><span>Время рейса</span><strong id="time">4,46 ч</strong></div>
+<div class="result"><span>Расход топлива</span><strong id="litres">28,8 л</strong></div>
+<div class="result"><span>Стоимость топлива</span><strong id="fuelCost">2 592 ₽</strong></div>
+<div class="result"><span>Оплата водителя</span><strong id="driverCost">5 129 ₽</strong></div>
+<div class="result"><span>Платные дороги всего</span><strong id="tollsTotal">0 ₽</strong></div>
+<div class="result"><span>Себестоимость</span><strong id="cost">7 721 ₽</strong></div>
+<div class="result"><span>Наценка</span><strong id="markupAmount">1 544 ₽</strong></div>
+<div class="result total"><span>Цена для клиента</span><strong id="price">9 265 ₽</strong></div>
+<div class="result profit"><span>Плановая прибыль</span><strong id="profit">1 544 ₽</strong></div>
+</div>
+<p class="note">Учитываются топливо, водитель, погрузка и разгрузка, платные дороги. Ремонт, амортизация и налоги не включены.</p>
+<button class="primary no-print" id="copyBtn" type="button">Скопировать расчёт</button>
+<button class="secondary no-print" id="printBtn" type="button">Печать / сохранить PDF</button>
+<div class="status" id="copyStatus" aria-live="polite"></div>
+</section>
+</main>
+
+<footer>Грузовики · Ориентировочный расчёт стоимости рейса</footer>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const num=id=>{
+const v=Number($(id).value);
+return Number.isFinite(v)&&v>=0?v:0;
+};
+const money=v=>Math.round(v).toLocaleString("ru-RU")+" ₽";
+const dec=(v,d=1)=>v.toLocaleString("ru-RU",{maximumFractionDigits:d});
+
+function calculate(){
+const distance=num("km")*2;
+const speed=Math.max(num("speed"),1);
+const hours=distance/speed+num("loadingHours");
+const litres=distance*num("consumption")/100;
+const fuel=litres*num("fuelPrice");
+const driver=hours*num("wage");
+const tolls=num("tollOut")+num("tollBack");
+const cost=fuel+driver+tolls;
+const markup=cost*num("markup")/100;
+const price=cost+markup;
+
+const result={
+roundKm:dec(distance)+" км",
+time:dec(hours,2)+" ч",
+litres:dec(litres,2)+" л",
+fuelCost:money(fuel),
+driverCost:money(driver),
+tollsTotal:money(tolls),
+cost:money(cost),
+markupAmount:money(markup),
+price:money(price),
+profit:money(price-cost)
+};
+Object.keys(result).forEach(id=>$(id).textContent=result[id]);
+}
+
+["km","speed","tollOut","tollBack","wage","loadingHours","consumption","fuelPrice","markup"].forEach(id=>{
+$(id).addEventListener("input",calculate);
+$(id).addEventListener("change",calculate);
+});
+
+$("printBtn").addEventListener("click",()=>window.print());
+
+$("copyBtn").addEventListener("click",async()=>{
+const text=[
+"РАСЧЁТ ГРУЗОВОГО РЕЙСА",
+"Маршрут: "+($("from").value||"не указан")+" → "+($("to").value||"не указан"),
+"Расстояние туда-обратно: "+$("roundKm").textContent,
+"Время рейса: "+$("time").textContent,
+"Топливо: "+$("litres").textContent,
+"Стоимость топлива: "+$("fuelCost").textContent,
+"Оплата водителя: "+$("driverCost").textContent,
+"Платные дороги: "+$("tollsTotal").textContent,
+"Себестоимость: "+$("cost").textContent,
+"Цена клиенту: "+$("price").textContent,
+"Плановая прибыль: "+$("profit").textContent
+].join("\n");
+
+try{
+await navigator.clipboard.writeText(text);
+$("copyStatus").textContent="Расчёт скопирован.";
+}catch(error){
+const area=document.createElement("textarea");
+area.value=text;
+area.style.position="fixed";
+area.style.left="-9999px";
+document.body.appendChild(area);
+area.select();
+const ok=document.execCommand("copy");
+area.remove();
+$("copyStatus").textContent=ok?"Расчёт скопирован.":"Не удалось скопировать расчёт.";
+}
+});
+
+$("routeBtn").addEventListener("click",async()=>{
+const from=$("from").value.trim();
+const to=$("to").value.trim();
+const status=$("routeStatus");
+
+if(!from||!to){
+status.textContent="Сначала введи оба пункта маршрута.";
+return;
+}
+
+status.textContent="Ищу адреса…";
+
+try{
+async function geocode(query){
+const url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(query);
+const response=await fetch(url);
+if(!response.ok)throw Error("Ошибка поиска адреса");
+const data=await response.json();
+if(!data.length)throw Error("Адрес не найден: "+query);
+return data[0];
+}
+
+const start=await geocode(from);
+const end=await geocode(to);
+status.textContent="Строю маршрут…";
+
+const url="https://router.project-osrm.org/route/v1/driving/"+start.lon+","+start.lat+";"+end.lon+","+end.lat+"?overview=false";
+const response=await fetch(url);
+if(!response.ok)throw Error("Ошибка построения маршрута");
+const data=await response.json();
+
+if(data.code!=="Ok"||!data.routes||!data.routes.length)throw Error("Маршрут не найден");
+
+$("km").value=Math.round(data.routes[0].distance/100)/10;
+calculate();
+status.textContent="Расстояние обновлено. Проверь его перед использованием.";
+}catch(error){
+status.textContent="Не удалось найти маршрут. "+error.message+" Введи расстояние вручную.";
+}
+});
+
+calculate();
+})();
+</script>
+</body>
+</html>
